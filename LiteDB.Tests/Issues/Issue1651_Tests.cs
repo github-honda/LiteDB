@@ -3,24 +3,26 @@ using System.Collections.Generic;
 using Xunit;
 using System.Linq;
 
-namespace LiteDB.Issue1651
+namespace LiteDB.Tests.Issues
 {
-    public class Order : BaseEntity
+    
+    public class Issue1651_Tests
     {
-        public Customer Customer { get; set; }
-    }
+        public class Order : BaseEntity
+        {
+            public Customer Customer { get; set; }
+        }
 
-    public class Customer : BaseEntity
-    {
-        public string Name { get; set; }
-    }
+        public class Customer : BaseEntity
+        {
+            public string Name { get; set; }
+        }
 
-    public class BaseEntity
-    {
-        public Guid Id { get; set; }
-    }
-    public class CustomerRelationshipsTests
-    {
+        public class BaseEntity
+        {
+            public Guid Id { get; set; }
+        }
+
         [Fact]
         public void Find_ByRelationId_Success()
         {
