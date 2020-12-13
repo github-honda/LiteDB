@@ -13,8 +13,9 @@ LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 - Simple API, similar to MongoDB<br />
   MongoDB 較多人用. 但是 LiteDB 為 MIT Open source 別具優勢.
 - **\*** 100% C# code for .NET 4.5 / NETStandard 1.3/2.0 in a single DLL (less than 450kb)<br />
-  NETStandard 1.3 可相容 .net 4.6 以上<br />
-  NETStandard 2.0 可相容 .net 4.6.1 以上<br />
+  完全使用 C#, 開放原始碼, 可商業用途, License=MIT.<br />
+  NETStandard 1.3 可相容 .net 4.6 以上 <br />
+  NETStandard 2.0 可相容 .net 4.6.1 以上 <br />
 - **\*** Thread-safe
 - **\*** ACID with full transaction support
 - **\*** Data recovery after write failure (WAL log file)
