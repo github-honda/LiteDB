@@ -4,8 +4,7 @@
 
 ---
 
-[本文](https://github.com/github-honda/LiteDB/blob/master/README.md)為繁體中文備忘, 不是英翻中.<br />
-原文將保留參考, 只會擇要加註中文備忘.<br />
+[本文](https://github.com/github-honda/LiteDB/blob/master/README.md)為繁體中文備忘, 不是英翻中, 只會擇要加註中文備忘.
  
 LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 **\***=我的最愛<br />
@@ -20,7 +19,7 @@ LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 - **\*** ACID with full transaction support
 - **\*** Data recovery after write failure (WAL log file)
 - **\*** Datafile encryption using DES (AES) cryptography
-- **\*** Map your POCO classes to `BsonDocument` using attributes or fluent mapper API
+- **\*** Map your POCO classes to `BsonDocument` using attributes or fluent mapper API<br />
   POCO=a Plain Old CLR object= Plain Old Class Object.<br />
 - **\*** Store files and stream data (like GridFS in MongoDB)
 - **\*** Single data file storage (like SQLite)
