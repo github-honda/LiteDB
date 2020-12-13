@@ -4,33 +4,30 @@
 
 ---
 
-[本文](https://github.com/github-honda/LiteDB/blob/master/README.md)為繁體中文備忘, 不是英翻中.
-
-原文將會保留參考, 不會全部翻譯, 只會加註備忘或翻譯.
+[本文](https://github.com/github-honda/LiteDB/blob/master/README.md)為繁體中文備忘, 不是英翻中.<br />
+原文將保留參考, 只會擇要加註中文備忘.<br />
  
-LiteDB is a small, fast and lightweight .NET NoSQL embedded database. 
-
-*\**=我的最愛
-
-- *\** Serverless NoSQL Document Store<br />
+LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
+**\***=我的最愛<br />
+- **\*** Serverless NoSQL Document Store<br />
   NoSQL 是 Not Only SQL, 不是 No SQL !
 - Simple API, similar to MongoDB<br />
   MongoDB 較多人用. 但是 LiteDB 為 MIT Open source 別具優勢.
-- *\** 100% C# code for .NET 4.5 / NETStandard 1.3/2.0 in a single DLL (less than 450kb)<br />
+- **\*** 100% C# code for .NET 4.5 / NETStandard 1.3/2.0 in a single DLL (less than 450kb)<br />
   NETStandard 1.3 可相容 .net 4.6 以上<br />
   NETStandard 2.0 可相容 .net 4.6.1 以上<br />
-- *\** Thread-safe
-- *\** ACID with full transaction support
-- *\** Data recovery after write failure (WAL log file)
-- *\** Datafile encryption using DES (AES) cryptography
-- *\** Map your POCO classes to `BsonDocument` using attributes or fluent mapper API
-  POCO=a Plain Old CLR object= Plain Old Class Object.
-- *\** Store files and stream data (like GridFS in MongoDB)
-- *\** Single data file storage (like SQLite)
-- *\** Index document fields for fast search
+- **\*** Thread-safe
+- **\*** ACID with full transaction support
+- **\*** Data recovery after write failure (WAL log file)
+- **\*** Datafile encryption using DES (AES) cryptography
+- **\*** Map your POCO classes to `BsonDocument` using attributes or fluent mapper API
+  POCO=a Plain Old CLR object= Plain Old Class Object.<br />
+- **\*** Store files and stream data (like GridFS in MongoDB)
+- **\*** Single data file storage (like SQLite)
+- **\*** Index document fields for fast search
 - LINQ support for queries
-- *\** SQL-Like commands to access/transform data
-- *\** [LiteDB Studio](https://github.com/mbdavid/LiteDB.Studio) - Nice UI for data access 
+- **\*** SQL-Like commands to access/transform data
+- **\*** [LiteDB Studio](https://github.com/mbdavid/LiteDB.Studio) - Nice UI for data access 
 - **\*** Open source and free for everyone - including commercial use<br />
   License=MIT
 - Install from NuGet: `Install-Package LiteDB`
