@@ -4,7 +4,7 @@
 
 ---
 
-[本文](https://github.com/github-honda/LiteDB/blob/master/README.md)為繁體中文備忘, 不是英翻中, 只會擇要加註中文備忘.
+[本文](https://github.com/github-honda/LiteDB/blob/master/README.md) 不是英翻中, 只會擇要加註備忘或中文翻譯.
  
 LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 **\***=我的最愛<br />
@@ -20,7 +20,8 @@ LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 - **\*** Data recovery after write failure (WAL log file)
 - **\*** Datafile encryption using DES (AES) cryptography
 - **\*** Map your POCO classes to `BsonDocument` using attributes or fluent mapper API<br />
-  POCO=a Plain Old CLR object= Plain Old Class Object.<br />
+  POCO = .NET 最基本的 class. 沒有繼承、沒有屬性、也不依賴外部.<br />
+In software engineering, a plain old CLR object, or plain old class object (POCO) is a simple object created in the .NET Common Language Runtime (CLR) that is unencumbered by inheritance or attributes. In essence, a POCO does not have any dependency on an external framework.<br /> 
 - **\*** Store files and stream data (like GridFS in MongoDB)
 - **\*** Single data file storage (like SQLite)
 - **\*** Index document fields for fast search
@@ -28,7 +29,7 @@ LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 - **\*** SQL-Like commands to access/transform data
 - **\*** [LiteDB Studio](https://github.com/mbdavid/LiteDB.Studio) - Nice UI for data access 
 - **\*** Open source and free for everyone - including commercial use<br />
-  License=MIT
+  開放原始碼, License=MIT, 可商業用途.
 - Install from NuGet: `Install-Package LiteDB`
 
 
