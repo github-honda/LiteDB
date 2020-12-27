@@ -1,5 +1,5 @@
 From: hondachen@hotmail.com
-Date: 2020-12-13
+Date: 2020-12-26
 Subject: readme-LiteDB.txt
 
 ----------
@@ -15,7 +15,52 @@ https://github.com/github-honda/LiteDB
   
 歡迎來信交流.
 
+原則
+  1. LiteDB 的控制方式, 若太久沒用, 就容易忘記規則.  
+  2. LiteDB 畢竟不如 MongoDB 使用人數多, 且文件說明有限, 測試案例也較少. AP 需要 Try-Run 才能確定使用到正確的控制方式.
+  所以有些功能雖然很強, 建議只使用簡單的功能, 容易記憶及維護就好.
+  
+Document
+  將 Document class 獨立出來, 比較容易維護: 雖然可以把 Document 跟 Collection 合併在一個 Class 中, 但是卻容易造成(LiteDB 跟 AP)之間的功能混淆.
+  
+ID欄位
+  標示為 [BsonId] Attribute 或 (Id 不分大小寫) 視為 ID 欄位.
+  型別可以是(ObjectID, Guid, Int32, Int64, string)
 
+AutoId欄位 
+  ID為(ObjectID, Guid, Int32, Int64)的欄位會自動編號.
+    Int32, Int64會從1開始編號. 並以目前資料中(最大號+1)編號.
+  string 型別的 ID 不會自動編號.
+  
+索引
+  ID欄位會自動建立索引.
+  EnsureIndex()
+    (非ID欄位)只要在 GetCollection() 後呼叫 EnsureIndex() 就會建立索引.
+    查詢前, 都需要呼叫 EnsureIndex(), 才會使用Index加速查詢.
+      EnsureIndex() 
+	    回傳 true =建立新索引, 
+		     false=原索引已存在. 若原索引已經存在, 則無影響.
+  
+
+Expressions 運算式
+  $ 代表 root document.  預設可省略. 因此 $.Address.Street 等於 Address.Street.
+
+  $ 跟 * 的差別
+    $ represents current root document. When $ is used, you are referencing the root document. If neither $ nor * are present, $ is assumed.
+    * represent a group of documents. Used when GROUP BY is present or when you want to return a single value in a query (SELECT COUNT(*) FROM customers).
+    SELECT $ FROM customers 
+	  returns IEnumerable<BsonDocument> result (N documents). 
+    SELECT * FROM customers 
+	  returns a single value, a BsonArray with all documents result inside.
+
+MultiKey Index
+  LiteDB 的 MultiKey Index 是指(以BsonArray 建立的欄位可包含多欄位), 不是傳統的(兩個或多個欄位做索引).
+    難記憶, 別用!
+
+[BsonCtor]
+  Starting with version 5 of LiteDB you can use BsonCtorAttribute to indicate which constructor the mapper must use. Fields no longer need to have a public setter and can be initialized by the constructor.
+  [BsonCtor] 可指定 LiteDB mapper 使用的 Constructor.
+  
 ----------
 20201213
 
