@@ -1,46 +1,355 @@
 From: hondachen@hotmail.com
-Date: 2020-12-26
+Date: 2021-01-02
 Subject: readme-LiteDB.txt
 
-----------
-Summary:
-
-https://github.com/github-honda/LiteDB
-
-參考:
-  https://github.com/mbdavid/LiteDB
-  https://github.com/mbdavid/LiteDB/wiki
-  http://www.litedb.org/docs/ v5 文件
-  http://www.litedb.org/
-  
+本文網址: https://github.com/github-honda/LiteDB/blob/master/doc/readme-LiteDB.txt
 歡迎來信交流.
 
-原則
-  1. LiteDB 的控制方式, 若太久沒用, 就容易忘記規則.  
-  2. LiteDB 畢竟不如 MongoDB 使用人數多, 且文件說明有限, 測試案例也較少. AP 需要 Try-Run 才能確定使用到正確的控制方式.
-  所以有些功能雖然很強, 建議只使用簡單的功能, 容易記憶及維護就好.
+LiteDB: An open source MongoDB-like database with zero conﬁguration - mobile ready
+
+參考:
+https://github.com/github-honda/LiteDB
+https://github.com/mbdavid/LiteDB
+https://github.com/mbdavid/LiteDB/wiki
+http://www.litedb.org/docs/ v5 文件
+http://www.litedb.org/
+  
+
+摘要:
+1. LiteDB 的控制細節, 若太久沒用, 很容易忘記規則.
+
+2. LiteDB 畢竟不如 MongoDB 使用人數多, 且文件說明有限, 測試案例也較少. AP 需要 Try-Run 才能確定使用到正確的控制方式.
+   所以有些功能雖然很強, 建議只使用簡單的功能, 容易記憶及維護就好.
+   
+3. 盡量使用 Index 查詢才能加速查詢速度. 
+   使用 Find() 搭配 EnsureIndex():
+     先 Find查詢後, 再交給 LINQ 處理.
+     col.EnsureIndex(x => x.Name);
+     var result = col
+       .Find(Query.EQ("Name", "John Doe")) // This filter is executed in LiteDB using index
+       .Where(x => x.CreationDate >= x.DueDate.AddDays(-5)) // This filter is executed by LINQ to Object
+       .OrderBy(x => x.Age)
+       .Select(x => new 
+       { 
+           FullName = x.FirstName + " " + x.LastName, 
+           DueDays = x.DueDate - x.CreationDate 
+       }); // Transform
+
+   查詢時指定 index
+     查詢(指定 index 的前 iCount 筆資料, "_id" 為PK.)
+       int iOrder = bAscending ? Query.Ascending : Query.Descending;
+       col.Find(Query.All("_id", iOrder), 0, iCount);
+       col.Find(Query.All("FType", iOrder), 0, iCount);
+
+     查詢最後100筆資料:	
+       Create an index on AddedTime
+       Run `collection.Find(Query.All("AddedTime", Query.Descending), 0, 100);
+       Now you will list all yor documents in AddedTime desc order and get only 100 first.
+
+   建立索引, 名稱為"Key", 由兩個欄位組成一個字串建立.
+     col.EnsureIndex("Key", "$.DebtorNumber + '_' + $.ProductSku", true);
+
+   多欄位索引:
+     // 建立索引名稱為"my_index", 由兩個欄位組成 BsonArray.
+     col.EnsureIndex("my_index", "[$.Name, $.OrderNumber]", false);. 
+     // 查詢時指定 Index 為 "my_index":  
+     col.Find(Query.EQ("my_index", new BsonArray("John", 123)).
+
+   Samples of EnsureIndex:
+     col.EnsureIndex("idx_name", "name", false); 盡量用這個方式比較明確!
+     col.EnsureIndex("idx_name", x => x.name, false); 同上
+	 
+     col.EnsureIndex("attr1", "$.attr1");
+     col.EnsureIndex("LowerName", "LOWER($.Name)");
+
+	 // no index name defined
+     col.EnsureIndex("$.name");
+     col.EnsureIndex(x => x.name, false); 同上
+
+	 col.EnsureIndex("name.last");
+	 col.EnsureIndex("$.name.first", true);
+
+     // 建立索引名稱為"idx_name", 由兩個欄位組成 BsonArray.
+     col.EnsureIndex("idx_name", "[$.Name, $.OrderNumber]", false);. 
+     // 查詢時指定 Index 為 "idx_name":  
+     col.Find(Query.EQ("idx_name", new BsonArray("John", 123)).
+	 
+
+4. 開啟資料庫後就以 EnsureIndex 建立index, 集中一個地方呼叫 EnsureIndex 就可以!
+
+5. 沒有建立 Index的欄位, 不能用 Find(), 只能改用 Query() full scan collection.
+        public IEnumerable<DKeyType> QueryAllOrderBySeqNo()
+        {
+            // 沒有建立 Index的欄位, 不能用 Find(), 只能改用 Query() full scan collection.
+            return GetCollection()
+                .Query()
+                // .Where(x => x.FType.StartsWith("any"))
+                .OrderBy(x => x.FSeqNo, Query.Ascending)
+                .ToEnumerable();
+        }
+
   
 Document
   將 Document class 獨立出來, 比較容易維護: 雖然可以把 Document 跟 Collection 合併在一個 Class 中, 但是卻容易造成(LiteDB 跟 AP)之間的功能混淆.
-  
-ID欄位
-  標示為 [BsonId] Attribute 或 (Id 不分大小寫) 視為 ID 欄位.
-  型別可以是(ObjectID, Guid, Int32, Int64, string)
 
-AutoId欄位 
-  ID為(ObjectID, Guid, Int32, Int64)的欄位會自動編號.
-    Int32, Int64會從1開始編號. 並以目前資料中(最大號+1)編號.
-  string 型別的 ID 不會自動編號.
+Data Structure
+  BSON (Binary JSON)
+    提供 JsonSerializer 功能實作 JSON
+	BsonMapper 可將 Class 物件轉為 BsonValue, 例如:
+	  var customer = new Customer { Id = 1, Name = "John Doe" };
+      var doc = BsonMapper.Global.ToDocument(customer);
+      var jsonString = JsonSerialize.Serialize(doc);
+	
+	JsonSerialize 還支援讀寫到 file 或 stream.
+    JsonSerialize also supports TextReader and TextWriter to read/write directly from a file or Stream
+	
+  ObjectId
+    ObjectId is a 12 bytes BSON type, 依序編號, 適合當索引欄位.
+      Timestamp: 內建(UTC 建立時間) Value representing the seconds since the Unix epoch (4 bytes)
+      Machine: Machine identifier (3 bytes)
+      Pid: Process id (2 bytes)
+      Increment: A counter, starting with a random value (3 bytes)	
+    JSON representation: { "$oid": "507f1f55bcf96cd799438110" } 12 bytes in hex format
+	依序編號. ObjectIds are sequential, 適合當索引欄位.
+      var id = ObjectId.NewObjectId();
+
+      // You can get creation datetime from an ObjectId
+      var date = id.CreationTime;
+
+      // ObjectId is represented in hex value
+      Debug.WriteLine(id);
+      "507h096e210a18719ea877a2"
+
+      // Create an instance based on hex representation
+      var nid = new ObjectId("507h096e210a18719ea877a2");	
   
-索引
+  
+Object Mapping 物件轉換對應
+  The LiteDB mapper converts POCO classes documents. When you get a ILiteCollection<T> instance from LiteDatabase.GetCollection<T>, T will be your document type. If T is not a BsonDocument, LiteDB internally maps your class to BsonDocument. To do this, LiteDB uses the BsonMapper class:
+    當呼叫 LiteDatabase.GetCollection<T> 時, 若 傳入的 T (原本的class物件), 不是 BsonDocument時, 則會把 T 轉為 BsonDocument.
+    POCO = Plain Old CLR Objects is a class, which doesn't depend on any framework-specific base class.
+  Mapper Conventions 欄位轉換原則
+    欄位為(僅唯讀 或 可讀寫)
+  
+    _id欄位
+	  至少要有一個被視為 _id 的欄位:
+        欄名為 (Id 不分大小寫),
+        或 欄名為<ClassName>Id, 
+        或 標示[BsonId] Attribute,  
+        或 以 fluent API (x => x.欄位) 
+      型別可以為(ObjectID, Guid, Int32, Int64, string)
+      不可存放 value = Null, MinValue or MaxValue.
+	  會自動建立索引 unique index. 因此最大為 256 bytes. 
+
+    AutoId欄位 
+      若要自動編號, 則Insert時, (不要傳入 AutoId 的欄位) 或 (將 AutoId 的欄位清為 empty). 
+	    empty 例如: Int 型別為0, Guid型別為 Guid.Empty.
+		
+	  會自動編號的型別
+        ObjectId: ObjectId.NewObjectId()
+        Guid: Guid.NewGuid() method
+        Int32/Int64: New collection sequence. 從1開始編號. 並以目前資料中(最大號+1)編號.	    
+	  (AutoId 欄位)必須可讀寫. AutoId requires the id field to have a public setter.
+	  (AutoId 欄位)在Insert時, 執行自動編號的規則為:
+	    BsonDocument:            若沒有 _id 欄位, 就會執行自動編號. 
+		strongly-typed document: 若(_id 欄位為 empty), 則先(刪除_id欄位)後, 再Insert. (empty 例如: Int 型別為0, Guid型別為 Guid.Empty)
+          AutoId is only used when there is no _id field in the document upon insertion. 
+		  In strongly-typed documents, BsonMapper removes the _id field for empty values (like 0 for Int or Guid.Empty for Guid). 
+		  Please note that AutoId requires the id field to have a public setter.
+		  
+	  
+	忽略欄位: 標示 [BsonIgnore] 的欄位, LiteDB 會忽略不處理.
+    指定欄名: 標示 [BsonField("fieldName")]可指定欄名.
+	
+Collections
+  Collection 存放 Documents. 類似 RDB 的 Table 存放 Rows.
+  Collection 名稱不分大小寫.
+    Collection 名稱字頭為 "_"者, 保留為內部儲存用途.
+    Collection 名稱字頭為 "$"者, 保留為內部系統/虛擬的 Collections.
+  當執行到第一個 Insert()或 EnsureIndex()時, 會自動建立 Collection.
+  以下兩個範例產生相同的結果:
+    // Typed collection
+    using(var db = new LiteDatabase("mydb.db"))
+    {
+      // Get collection instance
+      var col = db.GetCollection<Customer>("customer");
+    
+      // Insert document to collection - if collection does not exist, it is created
+      col.Insert(new Customer { Id = 1, Name = "John Doe" });
+    
+      // Create an index over the Field name (if it doesn't exist)
+      col.EnsureIndex(x => x.Name);
+    
+      // Now, search for your document
+      var customer = col.FindOne(x => x.Name == "john doe");
+    }
+
+    // Untyped collection (T is BsonDocument)
+    using(var db = new LiteDatabase("mydb.db"))
+    {
+      // Get collection instance
+      var col = db.GetCollection("customer");
+    
+      // Insert document to collection - if collection does not exist, it is created
+      col.Insert(new BsonDocument{ ["_id"] = 1, ["Name"] = "John Doe" });
+    
+      // Create an index over the Field name (if it doesn't exist)
+      col.EnsureIndex("Name");
+    
+      // Now, search for your document
+      var customer = col.FindOne("$.Name = 'john doe'");
+    }  
+
+  System Collections
+    以 Collections 的型態提供資料庫資訊.
+    System Collections 都以 "$" 開頭.
+      除了 $file 之外, 都是 read-only.	
+
+
+Collection	        Description
+------------------  -----------------------------
+$cols	            Lists all collections in the datafile, including the system collections.
+$database	        Shows general info about the datafile.
+$indexes	        Lists all indexes in the datafile.
+$sequences	        Lists all the sequences in the datafile.
+$transactions	    Lists all the open transactions in the datafile.
+$snapshots	        Lists all existing snapshots.
+$open_cursors	    Lists all the open cursors in the datafile.
+$dump(pageID)	    Lists advanced info about the desired page. If no pageID is provided, lists all the pages.
+$page_list(pageID)	Lists basic info about the desired page. If no pageID is provided, lists all the pages.
+$query(subquery)	Takes a query as string and returns the result of the query. Can be used for simulating subqueries. Experimental.
+------------------  -----------------------------
+使用方式:
+        /// <summary>
+        /// 回傳所有的 collection 名稱.
+        /// 包括(user 跟 system).
+        /// </summary>
+        /// <returns></returns>
+        public ILiteCollection<BsonDocument> ZSysCols()
+        {
+            return Open().GetCollection("$cols");
+        }
+
+例如 LiteDatabase.GetCollectionNames() 內部就是以 "$cols" 製作如下:
+        public IEnumerable<string> GetCollectionNames()
+        {
+            // use $cols system collection with type = user only
+            var cols = this.GetCollection("$cols")
+                .Query()
+                .Where("type = 'user'")
+                .ToDocuments()
+                .Select(x => x["name"].AsString)
+                .ToArray();
+
+            return cols;
+        }
+------------------  -----------------------------
+$file(path)	See below.	  
+$file
+The $file system collection can be used to read from and write to external files.
+
+SELECT $ INTO $FILE('customers.json') FROM Customers dumps the entire content from the collection Customers into a JSON file.
+SELECT $ FROM $FILE('customers.json') reads the entire content from the JSON file.
+There is also limited support for CSV files. Only basic data types are supported and, on writing, the schema of the first document returned by the query will define the schema of the entire CSV file, with additional fields being ignored.
+
+SELECT $ INTO $FILE('customers.csv') FROM Customers dumps the entire content from the collection Customers into a CSV file.
+SELECT $ FROM $FILE('customers.csv') reads the entire content from the CSV file.
+The single parameter can be:
+
+$file("filename.json|csv"): Support filename only with file extension as format
+$file({ options }): Support all options
+{
+    filename: "string",
+    format: "json|csv",
+    enconding: "utf-8",
+    overwritten: false,
+    // JSON only
+    ident: 4,
+    pretty: false
+    // CSV only
+    delimiter: ",",
+    header: true, // write CSV header columns
+    header: [] // define header columns names when read
+}
+
+
+BsonDocument
+  內部以 Dictionary<string, BsonValue> 儲存 Key-Value 型態的資料.
+  Keys
+    不分大小寫
+	不可重複
+	除了 _id 欄位會排在第一個位置以外, 其餘的欄位會依照原本的順序存放.
+  Values
+    Value 可存放 Null, Int32, Int64, Decimal, Double, String, Embedded Document, Array, Binary, ObjectId, Guid, Boolean, DateTime, MinValue, MaxValue
+    作為索引的欄位, 在 BSON serialization 後, 最大為 256 bytes.  
+	可存放擴充的型別:  BsonValue, BsonArray, BsonDocument
+	  BsonValue
+	    可存放 any BSON data type, including null, array or document.
+		內建所有 .NET 資料型別建構式.
+		唯讀不可變更. immutable.
+		屬性 RawValue 可回傳內部實際的物件實體(.NET object instance)
+		
+		已實作隱含轉換 public static implicit operator, 所以不需要以下明確轉換: 
+			.NET types to BsonValue, implicit 
+			  new BsonValue("string");
+			  new BsonValue(true);
+			  new BsonValue(ObjectId.NewObjectId());
+			  new BsonValue(DateTime.Now);
+			  new BsonValue((decimal) 1);
+			  new BsonValue((double) 1.0);
+			  new BsonValue(Guid.NewGuid());
+			  new BsonValue((int) 1);
+			  new BsonValue((long) 1);
+			  new BsonValue(new byte[] {(byte) 1});
+			  new BsonDocument());
+			BsonValue to .NET types:
+				doc["_id"].AsInt32;
+				doc["_id"].AsInt64;
+				doc["FirstString"].AsString;
+				doc["Date"].AsDateTime;
+				doc["CustomerId"].AsGuid;
+				doc["EmptyString"].AsString;
+				doc["maxDate"].AsDateTime;
+				doc["minDate"].AsDateTime;
+				doc["Items"].AsArray;
+				doc["Items"].AsArray[0];
+				doc["Items"].AsArray[4];
+          		
+	  BsonArray
+	    可支援 IEnumerable<BsonValue>
+		每個元素可以是不同的 BSON type objects.
+	  BsonDocument
+	    沒有的欄位會回傳 BsonValue.Null.
+
+  .NET types BsonValue:		
+	public void Document_Copies_Properties_To_KeyValue_Array()
+	{
+		// ARRANGE
+		// create a Bson document with all possible value types
+		var document = new BsonDocument();
+		document.Add("string", new BsonValue("string"));
+		document.Add("bool", new BsonValue(true));
+		document.Add("objectId", new BsonValue(ObjectId.NewObjectId()));
+		document.Add("DateTime", new BsonValue(DateTime.Now));
+		document.Add("decimal", new BsonValue((decimal) 1));
+		document.Add("double", new BsonValue((double) 1.0));
+		document.Add("guid", new BsonValue(Guid.NewGuid()));
+		document.Add("int", new BsonValue((int) 1));
+		document.Add("long", new BsonValue((long) 1));
+		document.Add("bytes", new BsonValue(new byte[] {(byte) 1}));
+		document.Add("bsonDocument", new BsonDocument());
+
+		// ACT
+		// copy all properties to destination array
+		var result = new KeyValuePair<string, BsonValue>[document.Count()];
+		document.CopyTo(result, 0);
+	}
+ 
+Index 索引
   ID欄位會自動建立索引.
-  EnsureIndex()
-    (非ID欄位)只要在 GetCollection() 後呼叫 EnsureIndex() 就會建立索引.
-    查詢前, 都需要呼叫 EnsureIndex(), 才會使用Index加速查詢.
-      EnsureIndex() 
-	    回傳 true =建立新索引, 
-		     false=原索引已存在. 若原索引已經存在, 則無影響.
-  
+  查詢前需要呼叫 EnsureIndex(), 才會使用到指定的Index加速查詢.
+    EnsureIndex() 回傳 true=建立新索引, false=原索引已存在, 沒影響.
+  作為索引的欄位, 在 BSON serialization 後, 最大為 256 bytes.  
 
 Expressions 運算式
   $ 代表 root document.  預設可省略. 因此 $.Address.Street 等於 Address.Street.
@@ -59,7 +368,80 @@ MultiKey Index
 
 [BsonCtor]
   Starting with version 5 of LiteDB you can use BsonCtorAttribute to indicate which constructor the mapper must use. Fields no longer need to have a public setter and can be initialized by the constructor.
-  [BsonCtor] 可指定 LiteDB mapper 使用的 Constructor.
+  標示 [BsonCtor]屬性可指定 constructor 給 LiteDB mapper 使用
+  GetCollection<T> 會依照以下順序取用 Constructor:
+    1. 先找有(標示 [BsonCtor] 的 Constructor).
+	2. 否則找(沒有參數的 Constructor).
+	3. 最後找(參數名稱符合欄位名稱的 Constructor)
+	
+Pragmas
+  In LiteDB v5, pragmas are variables that can alter the behavior of a datafile. They are stored in the header of the datafile.
+  Rebuild Options
+    Rebuild 可重整資料庫, 縮小並加速處理速度.
+      rebuild; rebuilds the database with the default collation and no password
+      rebuild {"collation": "en-GB/IgnoreCase"}; rebuilds the datafile with the en-GB culture and case-insensitive string comparison
+      rebuild {"collation": "pt-BR/None", "password" : "1234"}; rebuilds the datafile with the pt-BR culture, case-sensitive string comparison and sets the password to “1234”	
+
+----------
+20210102
+多欄位 Index
+
+https://gitter.im/mbdavid/LiteDB?at=5c00f2521c439034aff5d55f
+
+Yes, but not a physical new property, a new index. 
+LiteDB has no support for compose indexes, but you can create complex indexes. 
+You can create something like this: 
+  col.EnsureIndex("my_index", "[$.Name, $.OrderNumber]", false);. 
+
+This will create a new index in collection that each key contains an array with 2 elements: Name, OrderNumber. 
+To use this in query, you can: 
+  col.Find(Query.EQ("my_index", new BsonArray("John", 123)).
+  
+  
+// 建立 "my_index" 為 Name + OrderNumber 兩個欄位
+// 查詢時指定 Index 為 "my_index":  
+  col.EnsureIndex("my_index", "[$.Name, $.OrderNumber]", false);. 
+  col.Find(Query.EQ("my_index", new BsonArray("John", 123)).
+
+// Query.All 代表指定 index 為 "_id" 欄位.
+  col.Find(Query.All(iOrder), 0, iCount);
+
+----------
+20201231
+查詢 Index 的最後100筆資料
+
+https://github.com/mbdavid/LiteDB/issues/37
+If you want take your lasted 100 docs using indexes, you can:
+
+Create an index on AddedTime
+Run `collection.Find(Query.All("AddedTime", Query.Descending), 0, 100);
+Now you will list all yor documents in AddedTime desc order and get only 100 first.
+  
+----------
+20201231
+使用 (EnsureIndex + Find) 比 Select-Where 快:
+https://github.com/mbdavid/LiteDB/issues/969
+
+Hi @LennardF1989, thanks for share this. When we talk about query performance, the most important think is: has a good index to be used! Good indexes are based in how distinct keys they have. If this combination of debtorNumber + productSkus are unique: perfect. Create an index on this and use Query.In, like this:
+
+public IEnumerable<GetPriceResponse> Get(int debtorNumber, List<string> productSkus)
+{
+    var keys = productSkus.Select(x => debtorNumber + "_" + x)
+        .Select(x => new BsonValue(x))
+        .ToList();
+    
+    // prefer use this "EnsureIndex" in you database open (to avoid checking this index in all query)
+    // if you do not have this "Key" field in your class, you can create an expression:
+    // I'm create as unique (set false if not possible)
+    _liteCollection.EnsureIndex("Key", "$.DebtorNumber + '_' + $.ProductSku", true);
+    
+    // now, use Query.In
+    var result = _liteCollection.Find(Query.In("Key", keys));
+
+    return result.Select(x => x.ServiceResponse);
+}
+In v4, this should be fastest way to get this data. Check this and let me know how was the result.
+
   
 ----------
 20201213
