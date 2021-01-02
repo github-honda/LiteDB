@@ -5,6 +5,8 @@
 ---
 
 [本文](https://github.com/github-honda/LiteDB/blob/master/README.md) 不是英翻中, 只會擇要加註備忘或中文翻譯.
+[reaeme-LiteDB.txt](https://github.com/github-honda/LiteDB/blob/master/doc/readme-LiteDB.txt) 提供程式開發原則與細節確認. 
+
  
 LiteDB is a small, fast and lightweight .NET NoSQL embedded database. <br />
 **\***=我的最愛<br />
