@@ -1,5 +1,5 @@
 From: hondachen@hotmail.com
-Date: 2021-01-02
+Date: 2021-01-17
 Subject: readme-LiteDB.txt
 
 本文網址: https://github.com/github-honda/LiteDB/blob/master/doc/readme-LiteDB.txt
@@ -16,12 +16,13 @@ http://www.litedb.org/
   
 
 摘要:
-1. LiteDB 的控制細節, 若太久沒用, 很容易忘記規則.
-
-2. LiteDB 畢竟不如 MongoDB 使用人數多, 且文件說明有限, 測試案例也較少. AP 需要 Try-Run 才能確定使用到正確的控制方式.
+1. LiteDB 的控制細節, 若太久沒用, 很容易忘記規則, 造成混淆, 不好維護.
+   LiteDB 畢竟不如 MongoDB 使用人數多, 文件說明有限, 測試案例也較少. 
+   較複雜的功能, 需要 Try-Run後確認, 才能以正確的方式實作出功能.
    所以有些功能雖然很強, 建議只使用簡單的功能, 容易記憶及維護就好.
    
-3. 盡量使用 Index 查詢才能加速查詢速度. 
+   
+2. 盡量使用 Index 查詢才能加速查詢速度. 
    使用 Find() 搭配 EnsureIndex():
      先 Find查詢後, 再交給 LINQ 處理.
      col.EnsureIndex(x => x.Name);
@@ -75,9 +76,9 @@ http://www.litedb.org/
      col.Find(Query.EQ("idx_name", new BsonArray("John", 123)).
 	 
 
-4. 開啟資料庫後就以 EnsureIndex 建立index, 集中一個地方呼叫 EnsureIndex 就可以!
+3. 開啟資料庫後就以 EnsureIndex 建立index, 集中一個地方呼叫 EnsureIndex 就可以!
 
-5. 沒有建立 Index的欄位, 不能用 Find(), 只能改用 Query() full scan collection.
+4. 沒有建立 Index的欄位, 不能用 Find(), 只能改用 Query() full scan collection.
         public IEnumerable<DKeyType> QueryAllOrderBySeqNo()
         {
             // 沒有建立 Index的欄位, 不能用 Find(), 只能改用 Query() full scan collection.
@@ -87,8 +88,10 @@ http://www.litedb.org/
                 .OrderBy(x => x.FSeqNo, Query.Ascending)
                 .ToEnumerable();
         }
+		
 
-  
+----------
+原文摘要 
 Document
   將 Document class 獨立出來, 比較容易維護: 雖然可以把 Document 跟 Collection 合併在一個 Class 中, 但是卻容易造成(LiteDB 跟 AP)之間的功能混淆.
 
@@ -274,7 +277,65 @@ $file({ options }): Support all options
 
 
 BsonDocument
-  內部以 Dictionary<string, BsonValue> 儲存 Key-Value 型態的資料.
+  以 Dictionary<string, BsonValue> 儲存 Key-Value 型態的資料.
+  範例:
+    1. 建立方式1: 簡化設定 var doc = new BsonDocument { ["_id"] = 10, ["name"] = "John" };
+	2. 建立方式2: 設定 BsonDocument[Key].Value
+	        var customer = new BsonDocument();
+            customer["_id"] = ObjectId.NewObjectId();
+            customer["Name"] = "John Doe";
+            customer["CreateDate"] = DateTime.Now;
+            customer["Phones"] = new BsonArray { "8000-0000", "9000-000" };
+            customer["IsActive"] = true;
+            customer["IsAdmin"] = new BsonValue(true);
+            customer["Address"] = new BsonDocument
+            {
+                ["Street"] = "Av. Protasio Alves"
+            };
+
+            customer["Address"]["Number"] = "1331";
+
+            var json = JsonSerializer.Serialize(customer);
+			
+	3. 讀取 [Key].Value
+        public IEnumerable<string> GetCollectionNames()
+        {
+            // 取得 ILiteCollection<BsonDocument>:
+            var cols = this.GetCollection("$cols")
+                .Query()
+                .Where("type = 'user'")
+                .ToDocuments()
+                .Select(x => x["name"].AsString)
+                .ToArray();
+
+            return cols;
+        }
+
+    4. BsonDocuments 轉為 KeyValuePair<string, BsonValue>[]	
+	public void Document_Copies_Properties_To_KeyValue_Array()
+	{
+		// ARRANGE
+		// create a Bson document with all possible value types
+		var document = new BsonDocument();
+		document.Add("string", new BsonValue("string"));
+		document.Add("bool", new BsonValue(true));
+		document.Add("objectId", new BsonValue(ObjectId.NewObjectId()));
+		document.Add("DateTime", new BsonValue(DateTime.Now));
+		document.Add("decimal", new BsonValue((decimal) 1));
+		document.Add("double", new BsonValue((double) 1.0));
+		document.Add("guid", new BsonValue(Guid.NewGuid()));
+		document.Add("int", new BsonValue((int) 1));
+		document.Add("long", new BsonValue((long) 1));
+		document.Add("bytes", new BsonValue(new byte[] {(byte) 1}));
+		document.Add("bsonDocument", new BsonDocument());
+
+		// ACT
+		// copy all properties to destination array
+		var result = new KeyValuePair<string, BsonValue>[document.Count()];
+		document.CopyTo(result, 0);
+	}
+		
+    
   Keys
     不分大小寫
 	不可重複
@@ -282,8 +343,8 @@ BsonDocument
   Values
     Value 可存放 Null, Int32, Int64, Decimal, Double, String, Embedded Document, Array, Binary, ObjectId, Guid, Boolean, DateTime, MinValue, MaxValue
     作為索引的欄位, 在 BSON serialization 後, 最大為 256 bytes.  
-	可存放擴充的型別:  BsonValue, BsonArray, BsonDocument
-	  BsonValue
+	.NET 擴充的 Value型別:  BsonValue, BsonArray, BsonDocument
+      BsonValue
 	    可存放 any BSON data type, including null, array or document.
 		內建所有 .NET 資料型別建構式.
 		唯讀不可變更. immutable.
@@ -317,33 +378,10 @@ BsonDocument
           		
 	  BsonArray
 	    可支援 IEnumerable<BsonValue>
-		每個元素可以是不同的 BSON type objects.
+		每個元素可以是不同型別的 BSON type objects.
 	  BsonDocument
 	    沒有的欄位會回傳 BsonValue.Null.
 
-  .NET types BsonValue:		
-	public void Document_Copies_Properties_To_KeyValue_Array()
-	{
-		// ARRANGE
-		// create a Bson document with all possible value types
-		var document = new BsonDocument();
-		document.Add("string", new BsonValue("string"));
-		document.Add("bool", new BsonValue(true));
-		document.Add("objectId", new BsonValue(ObjectId.NewObjectId()));
-		document.Add("DateTime", new BsonValue(DateTime.Now));
-		document.Add("decimal", new BsonValue((decimal) 1));
-		document.Add("double", new BsonValue((double) 1.0));
-		document.Add("guid", new BsonValue(Guid.NewGuid()));
-		document.Add("int", new BsonValue((int) 1));
-		document.Add("long", new BsonValue((long) 1));
-		document.Add("bytes", new BsonValue(new byte[] {(byte) 1}));
-		document.Add("bsonDocument", new BsonDocument());
-
-		// ACT
-		// copy all properties to destination array
-		var result = new KeyValuePair<string, BsonValue>[document.Count()];
-		document.CopyTo(result, 0);
-	}
  
 Index 索引
   ID欄位會自動建立索引.
@@ -362,9 +400,104 @@ Expressions 運算式
     SELECT * FROM customers 
 	  returns a single value, a BsonArray with all documents result inside.
 
+DbRef
+  文件少, 缺測試案例, 實作功能待測試.
+  難維護及記憶整個控制循環的每一個細節, 放棄使用 !
+  
+  
+ConnectionString
+
+  ConnectionString 中, 若沒有"="的話, 則當作檔案名稱.
+    檔案名稱可為絕對路徑, 或(相對於.dll目錄的)相對路徑. Full path or relative path from DLL directory.
+	
+    可選擇:
+	Key			Type			Description																		Default value
+	----------- --------------- ------------------------------------------------------------------------------- ---------
+	Filename	string			Full or relative path to the datafile. 
+	                            Supports :memory: for memory database or :temp: for in disk temporary database 
+								(file will deleted when database is closed) [required]
+	Connection	string			Connection type (“direct” or “shared”)											"direct”
+	Password	string			Encrypt (using AES) your datafile with a password								null (no encryption)
+	InitialSize	string or long	Initial size for the datafile (string suppoorts “KB”, “MB” and “GB”)			0
+	ReadOnly	bool			Open datafile in read-only mode													false
+	Upgrade		bool			Check if datafile is of an older version and upgrade it before opening			false
+	----------- --------------- ------------------------------------------------------------------------------- ---------
+	
+  Connection Type
+    LiteDB offers 2 types of connections: Direct and Shared. This affect how engine will open data file.
+    Direct: Engine will open the datafile in exclusive mode and will keep it open until Dispose(). 
+	        The datafile cannot be opened by another process. 
+			This is the recommended mode because it’s faster and cachable.
+			預設為(Direct互斥模式), 不可同時開啟, 直到關閉檔案為止. 建議使用這種模式, 速度快且有快取.
+    Shared: Engine will be close the datafile after each operation. 
+	        Locks are made using Mutex. 
+			This is more expensive but you can open same file from multiple processes.	
+			(Shared共用模式)則是每次作業後關閉檔案. 以 Mutex 方式鎖定檔案. 
+			系統負荷較重, 但是不同作業可以開啟相同的檔案.
+  Examples:
+    App.config
+    <connectionStrings>
+        <add name="LiteDB" connectionString="Filename=C:\database.db;Password=1234" />
+    </connectionStrings>  
+  
+    C#
+    System.Configuration.ConfigurationManager.ConnectionStrings["LiteDB"].ConnectionString
+
+  
+            // only filename
+            var onlyfile = new ConnectionString(@"demo.db");
+
+            // file with spaces without "
+            var normal = new ConnectionString(@"filename=c:\only file\demo.db");
+
+            // file with spaces with " and ;
+            var full = new ConnectionString(
+                @"filename=""c:\only;file\""d\""emo.db""; 
+                  password =   ""john-doe "" ;
+                  initial size = 10 MB ;
+                  readONLY =  TRUE;");
+				  
+        /// <summary>
+        /// Full path or relative path from DLL directory. Can use ':temp:' for temp database or ':memory:' for in-memory database. (default: null)
+        /// </summary>
+        public string Filename { get; set; }
+		
+            // Can use ':temp:' for temp database or ':memory:' for in-memory database. (default: null)
+            using (var db = new LiteDatabase(":temp:"))
+            using (var db = new LiteDatabase(":memory:"))
+	
+				  
+
+            // ConnectionString_Very_Long	
+			Filename length = 49
+			Password length = 512
+            var cn = new ConnectionString(@"Filename=C:\Users\yup\AppData\Roaming\corex\storecore.file;Password='1495c305c5312dd1a9a18d9502daa0369216763ca7a6f537ddbe290241cf8aad1ca326313adec74bb98d1955747347cf0e3f087899d8bb2e0aa002ff825e1c0f25eaa79e5dfbf1c0e2daf6746a3a3f140244b764204c20c0ccede3521eaf8537ae32d4b13a04f1c387f56a8d6fa095bc53451c1892a46b8182afd94559cd7377aebc8d4a2b4883c637a359e6e67e1d8c2d789721351ebb000409329b2e875d21278b7c76724c68729e53dac50168564b8c3432018212a111c952e593829b42c296458cc0020174aaef9ca6b5661ca965004404c2bbb256bc41a8aa5c5349c615e40328a3263c45e5f96e61048149e98aa8b6f2afb59d73379e1dce5429752d8d'");
+
+			connection=shared:			
+			class Program
+			{
+				static async Task Main(string[] args)
+				{
+					await Task.WhenAll(
+						Action(),
+						Action());
+				}
+				private static async Task Action()
+				{
+					using var db = new LiteDatabase(@"Filename=database.db;Password='1234';connection=shared");
+					await Task.Delay(1000);
+				}
+			}			
+			If you prefer using a connectionString object instead of a literal string, you can also replace the string with something like this
+
+			new ConnectionString(@"database.db")
+			{
+				Password = "1234",
+				Connection = ConnectionType.Shared
+			};  
+
 MultiKey Index
   LiteDB 的 MultiKey Index 是指(以BsonArray 建立的欄位可包含多欄位), 不是傳統的(兩個或多個欄位做索引).
-    難記憶, 別用!
 
 [BsonCtor]
   Starting with version 5 of LiteDB you can use BsonCtorAttribute to indicate which constructor the mapper must use. Fields no longer need to have a public setter and can be initialized by the constructor.
@@ -381,6 +514,49 @@ Pragmas
       rebuild; rebuilds the database with the default collation and no password
       rebuild {"collation": "en-GB/IgnoreCase"}; rebuilds the datafile with the en-GB culture and case-insensitive string comparison
       rebuild {"collation": "pt-BR/None", "password" : "1234"}; rebuilds the datafile with the pt-BR culture, case-sensitive string comparison and sets the password to “1234”	
+
+
+----------
+20210113
+
+檔案不可同時使用:
+System.IO.IOException
+  HResult=0x80070020
+  Message=由於另一個處理序正在使用檔案 'W:\Research\ZLib46\ZLib\ZLib46200101\ZLib\CRUDLiteDBWinForm\bin\Debug\MyTest1.db'，所以無法存取該檔案。
+  Source=mscorlib
+  StackTrace:
+   at System.IO.__Error.WinIOError(Int32 errorCode, String maybeFullPath)
+   at System.IO.FileStream.Init(String path, FileMode mode, FileAccess access, Int32 rights, Boolean useRights, FileShare share, Int32 bufferSize, FileOptions options, SECURITY_ATTRIBUTES secAttrs, String msgPath, Boolean bFromProxy, Boolean useLongPath, Boolean checkHost)
+   at System.IO.FileStream..ctor(String path, FileMode mode, FileAccess access, FileShare share, Int32 bufferSize, FileOptions options)
+   at LiteDB.Engine.FileStreamFactory.GetStream(Boolean canWrite, Boolean sequencial) in W:\Research\ZLib46\ZLib\ZLib46200101\ZLib\LiteDB\Engine\Disk\StreamFactory\FileStreamFactory.cs:line 43
+   at LiteDB.Engine.StreamPool.<>c__DisplayClass3_0.<.ctor>b__0() in W:\Research\ZLib46\ZLib\ZLib46200101\ZLib\LiteDB\Engine\Disk\StreamFactory\StreamPool.cs:line 29
+   at System.Lazy`1.CreateValue()
+
+
+        /// <summary>
+        /// Create new data file FileStream instance based on filename
+        /// </summary>
+        public Stream GetStream(bool canWrite, bool sequencial)
+        {
+            var write = canWrite && (_readonly == false);
+
+            var isNewFile = write && this.Exists() == false;
+
+            var stream = new FileStream(_filename,
+                _readonly ? System.IO.FileMode.Open : System.IO.FileMode.OpenOrCreate,
+                write ? FileAccess.ReadWrite : FileAccess.Read,
+                write ? FileShare.Read : FileShare.ReadWrite,
+                PAGE_SIZE,
+                sequencial ? FileOptions.SequentialScan : FileOptions.RandomAccess);
+
+            if (isNewFile && _hidden)
+            {
+                File.SetAttributes(_filename, FileAttributes.Hidden);
+            }
+
+            return _password == null ? (Stream)stream : new AesStream(_password, stream);
+        }
+
 
 ----------
 20210102
