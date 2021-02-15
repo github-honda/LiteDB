@@ -1,5 +1,5 @@
 From: hondachen@hotmail.com
-Date: 2021-01-17
+Date: 2021-02-01
 Subject: readme-LiteDB.txt
 
 本文網址: https://github.com/github-honda/LiteDB/blob/master/doc/readme-LiteDB.txt
@@ -131,6 +131,7 @@ Object Mapping 物件轉換對應
   The LiteDB mapper converts POCO classes documents. When you get a ILiteCollection<T> instance from LiteDatabase.GetCollection<T>, T will be your document type. If T is not a BsonDocument, LiteDB internally maps your class to BsonDocument. To do this, LiteDB uses the BsonMapper class:
     當呼叫 LiteDatabase.GetCollection<T> 時, 若 傳入的 T (原本的class物件), 不是 BsonDocument時, 則會把 T 轉為 BsonDocument.
     POCO = Plain Old CLR Objects is a class, which doesn't depend on any framework-specific base class.
+
   Mapper Conventions 欄位轉換原則
     欄位為(僅唯讀 或 可讀寫)
   
@@ -144,32 +145,52 @@ Object Mapping 物件轉換對應
       不可存放 value = Null, MinValue or MaxValue.
 	  會自動建立索引 unique index. 因此最大為 256 bytes. 
 
-    AutoId欄位 
-      若要自動編號, 則Insert時, (不要傳入 AutoId 的欄位) 或 (將 AutoId 的欄位清為 empty). 
-	    empty 例如: Int 型別為0, Guid型別為 Guid.Empty.
-		
+    AutoId 欄位 
 	  會自動編號的型別
-        ObjectId: ObjectId.NewObjectId()
-        Guid: Guid.NewGuid() method
         Int32/Int64: New collection sequence. 從1開始編號. 並以目前資料中(最大號+1)編號.	    
+        ObjectId:    ObjectId.NewObjectId()
+        Guid:        Guid.NewGuid() method
+ 
 	  (AutoId 欄位)必須可讀寫. AutoId requires the id field to have a public setter.
+
 	  (AutoId 欄位)在Insert時, 執行自動編號的規則為:
 	    BsonDocument:            若沒有 _id 欄位, 就會執行自動編號. 
 		strongly-typed document: 若(_id 欄位為 empty), 則先(刪除_id欄位)後, 再Insert. (empty 例如: Int 型別為0, Guid型別為 Guid.Empty)
           AutoId is only used when there is no _id field in the document upon insertion. 
 		  In strongly-typed documents, BsonMapper removes the _id field for empty values (like 0 for Int or Guid.Empty for Guid). 
 		  Please note that AutoId requires the id field to have a public setter.
+      因此 
+        若要自動編號, 則Insert時, (不要傳入 AutoId 的欄位) 或 (將 AutoId 的欄位清為 empty). 
+	    清為 empty 例如: Int 型別為0, Guid型別為 Guid.Empty.
 		  
 	  
 	忽略欄位: 標示 [BsonIgnore] 的欄位, LiteDB 會忽略不處理.
     指定欄名: 標示 [BsonField("fieldName")]可指定欄名.
 	
+	BsonDocument/Customer object 轉換範例:
+        public void Custom_Interface_Implements_IEnumerable()
+        {
+            var mapper = new BsonMapper();           // 或 直接使用 BsonMapper.Global
+
+            var user = new User { Id = 1, Strings = new List<string> { "aaa", "bbb" } };
+            var doc = mapper.ToDocument(user);       // 轉為 BsonDocument.
+            var user2 = mapper.ToObject<User>(doc);  // 轉為 POCO object.
+
+            Assert.Equal(user.Id, user2.Id);
+            Assert.Equal(user.Strings.Count, user2.Strings.Count);
+        }
+	
+	
 Collections
-  Collection 存放 Documents. 類似 RDB 的 Table 存放 Rows.
+  Collection 存放 Documents. 
+    類似 RDB 的 Table 存放 Rows.
   Collection 名稱不分大小寫.
     Collection 名稱字頭為 "_"者, 保留為內部儲存用途.
     Collection 名稱字頭為 "$"者, 保留為內部系統/虛擬的 Collections.
-  當執行到第一個 Insert()或 EnsureIndex()時, 會自動建立 Collection.
+  Collection 建立時間: 
+    當執行到第一個 Insert()或 EnsureIndex()時, 會自動建立 Collection.
+	  因此若 Collection 只有 _id 欄位, 沒有 Index 欄位的話, 可(先 Insert 一筆資料再刪除)建立空的 Collection.
+  
   以下兩個範例產生相同的結果:
     // Typed collection
     using(var db = new LiteDatabase("mydb.db"))
@@ -279,8 +300,11 @@ $file({ options }): Support all options
 BsonDocument
   以 Dictionary<string, BsonValue> 儲存 Key-Value 型態的資料.
   範例:
-    1. 建立方式1: 簡化設定 var doc = new BsonDocument { ["_id"] = 10, ["name"] = "John" };
-	2. 建立方式2: 設定 BsonDocument[Key].Value
+    建立 BsonDocument: 
+	        a. 簡化單行指令: 
+			var doc = new BsonDocument { ["_id"] = 10, ["name"] = "John" };
+	        
+			b. BsonDocument[Key].Value = BsonValue...
 	        var customer = new BsonDocument();
             customer["_id"] = ObjectId.NewObjectId();
             customer["Name"] = "John Doe";
@@ -292,49 +316,26 @@ BsonDocument
             {
                 ["Street"] = "Av. Protasio Alves"
             };
-
             customer["Address"]["Number"] = "1331";
-
             var json = JsonSerializer.Serialize(customer);
 			
-	3. 讀取 [Key].Value
-        public IEnumerable<string> GetCollectionNames()
-        {
-            // 取得 ILiteCollection<BsonDocument>:
-            var cols = this.GetCollection("$cols")
-                .Query()
-                .Where("type = 'user'")
-                .ToDocuments()
-                .Select(x => x["name"].AsString)
-                .ToArray();
-
-            return cols;
-        }
-
-    4. BsonDocuments 轉為 KeyValuePair<string, BsonValue>[]	
-	public void Document_Copies_Properties_To_KeyValue_Array()
-	{
-		// ARRANGE
-		// create a Bson document with all possible value types
-		var document = new BsonDocument();
-		document.Add("string", new BsonValue("string"));
-		document.Add("bool", new BsonValue(true));
-		document.Add("objectId", new BsonValue(ObjectId.NewObjectId()));
-		document.Add("DateTime", new BsonValue(DateTime.Now));
-		document.Add("decimal", new BsonValue((decimal) 1));
-		document.Add("double", new BsonValue((double) 1.0));
-		document.Add("guid", new BsonValue(Guid.NewGuid()));
-		document.Add("int", new BsonValue((int) 1));
-		document.Add("long", new BsonValue((long) 1));
-		document.Add("bytes", new BsonValue(new byte[] {(byte) 1}));
-		document.Add("bsonDocument", new BsonDocument());
-
-		// ACT
-		// copy all properties to destination array
-		var result = new KeyValuePair<string, BsonValue>[document.Count()];
-		document.CopyTo(result, 0);
-	}
-		
+			c. BsonDocument.Add("Key", new BsonValue((CAST) AnyType)
+            // create a Bson document with all possible value types
+            var document = new BsonDocument();
+            document.Add("string", new BsonValue("string"));
+            document.Add("bool", new BsonValue(true));
+            document.Add("objectId", new BsonValue(ObjectId.NewObjectId()));
+            document.Add("DateTime", new BsonValue(DateTime.Now));
+            document.Add("decimal", new BsonValue((decimal) 1));
+            document.Add("double", new BsonValue((double) 1.0));
+            document.Add("guid", new BsonValue(Guid.NewGuid()));
+            document.Add("int", new BsonValue((int) 1));
+            document.Add("long", new BsonValue((long) 1));
+            document.Add("bytes", new BsonValue(new byte[] {(byte) 1}));
+            document.Add("bsonDocument", new BsonDocument());
+            // copy all properties to destination array
+            var result = new KeyValuePair<string, BsonValue>[document.Count()];
+            document.CopyTo(result, 0);
     
   Keys
     不分大小寫
