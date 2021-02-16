@@ -35,7 +35,7 @@ namespace LiteDB.Tests.QueryTest
                 .ToArray();
 
             var r1 = collection.Query()
-                .OrderByDescending(x => x.Name)
+                .OrderByDescending(x => x.Name) // 20210216, Honda, CodeHelper order by descending with Linq 
                 .Select(x => new {x.Name})
                 .ToArray();
 
@@ -73,7 +73,7 @@ namespace LiteDB.Tests.QueryTest
                 .ToArray();
 
             var r1 = collection.Query()
-                .OrderBy(x => x.Date.Day)
+                .OrderBy(x => x.Date.Day)  // 20210216, Honda, CodeHelper order by Linq
                 .Select(x => new { d = x.Date.Day })
                 .Offset(5)
                 .Limit(10)
@@ -85,7 +85,7 @@ namespace LiteDB.Tests.QueryTest
         [Fact]
         public void Query_Asc_Desc()
         {
-            var asc = collection.Find(Query.All(Query.Ascending)).ToArray();
+            var asc = collection.Find(Query.All(Query.Ascending)).ToArray(); // 20210216, Honda, CodeHelper order by query.Ascending.
             var desc = collection.Find(Query.All(Query.Descending)).ToArray();
 
             asc[0].Id.Should().Be(1);

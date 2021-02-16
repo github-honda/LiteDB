@@ -163,7 +163,7 @@ namespace LiteDB.Tests.Expressions
         }
 
         [Fact]
-        public void Expressions_Scalar_Methods()
+        public void Expressions_Scalar_Methods() // 20210216, Honda, CodeHelper BsonExpression.
         {
             BsonDocument doc;
 

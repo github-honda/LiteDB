@@ -162,7 +162,7 @@ namespace LiteDB.Tests.Mapper
         }
 
         [Fact]
-        public void Linq_Enumerables()
+        public void Linq_Enumerables() // 20210216, Honda, CodeHelper Linq vs BsonExpression
         {
             // access array items
             TestExpr<User>(x => x.Phones, "$.Phones");
@@ -173,19 +173,19 @@ namespace LiteDB.Tests.Mapper
             TestExpr<User>(x => x.Phones.Where(p => p.Prefix == x.Id), "FILTER($.Phones=>(@.Prefix=$._id))");
 
             // aggregate
-            TestExpr<User>(x => x.Phones.Count(), "COUNT($.Phones)");
-            TestExpr<User>(x => x.Phones.Min(), "MIN($.Phones)");
-            TestExpr<User>(x => x.Phones.Max(), "MAX($.Phones)");
-            TestExpr<User>(x => x.Phones.Select(p => p.Number).Sum(), "SUM(MAP($.Phones => @.Number))");
+            TestExpr<User>(x => x.Phones.Count(), "COUNT($.Phones)");  // 20210216, Honda, CodeHelper Count
+            TestExpr<User>(x => x.Phones.Min(), "MIN($.Phones)");  // 20210216, Honda, CodeHelper MIN
+            TestExpr<User>(x => x.Phones.Max(), "MAX($.Phones)");  // 20210216, Honda, CodeHelper MAX
+            TestExpr<User>(x => x.Phones.Select(p => p.Number).Sum(), "SUM(MAP($.Phones => @.Number))"); // 20210216, Honda, CodeHelper SUM
 
             // aggregate with map
-            TestExpr<User>(x => x.Phones.Sum(w => w.Number), "SUM(MAP($.Phones => @.Number))");
+            TestExpr<User>(x => x.Phones.Sum(w => w.Number), "SUM(MAP($.Phones => @.Number))");  // 20210216, Honda, CodeHelper SUM
 
             // map
-            TestExpr<User>(x => x.Phones.Select(y => y.Type), "MAP($.Phones => @.Type)");
+            TestExpr<User>(x => x.Phones.Select(y => y.Type), "MAP($.Phones => @.Type)"); // 20210216, Honda, CodeHelper Linq Select vs MAP.
 
             TestExpr<User>(x => x.Phones.Select(p => p.Number).Sum(), "SUM(MAP($.Phones => @.Number))");
-            TestExpr<User>(x => x.Phones.Select(p => p.Number).Average(), "AVG(MAP($.Phones => @.Number))");
+            TestExpr<User>(x => x.Phones.Select(p => p.Number).Average(), "AVG(MAP($.Phones => @.Number))"); // 20210216, Honda, CodeHelper AVG
 
             // array/list
             TestExpr<User>(x => x.Phones.Where(w => w.Number == 5).ToArray(), "ARRAY(FILTER($.Phones=>(@.Number=@p0)))", 5);
@@ -298,19 +298,19 @@ namespace LiteDB.Tests.Mapper
         public void Linq_Methods()
         {
             // string instance methods
-            TestExpr<User>(x => x.Name.ToUpper(), "UPPER(Name)");
-            TestExpr<User>(x => x.Name.Substring(10), "SUBSTRING(Name, @p0)", 10);
-            TestExpr<User>(x => x.Name.Substring(10, 20), "SUBSTRING(Name, @p0, @p1)", 10, 20);
+            TestExpr<User>(x => x.Name.ToUpper(), "UPPER(Name)"); // 20210216, Honda, CodeHelper: ToUpper vs UPPER
+            TestExpr<User>(x => x.Name.Substring(10), "SUBSTRING(Name, @p0)", 10); // 20210216, Honda, CodeHelper: Substring
+            TestExpr<User>(x => x.Name.Substring(10, 20), "SUBSTRING(Name, @p0, @p1)", 10, 20); // 20210216, Honda, CodeHelper: Substring 
             TestExpr<User>(x => x.Name.Replace('+', '-'), "REPLACE(Name, @p0, @p1)", "+", "-");
             TestExpr<User>(x => x.Name.IndexOf("m"), "INDEXOF(Name, @p0)", "m");
-            TestExpr<User>(x => x.Name.IndexOf("m", 20), "INDEXOF(Name, @p0, @p1)", "m", 20);
+            TestExpr<User>(x => x.Name.IndexOf("m", 20), "INDEXOF(Name, @p0, @p1)", "m", 20); // 20210216, Honda, CodeHelper: IndexOf
             TestExpr<User>(x => x.Name.ToUpper().Trim(), "TRIM(UPPER(Name))");
             TestExpr<User>(x => x.Name.ToUpper().Trim().PadLeft(5, '0'), "LPAD(TRIM(UPPER($.Name)), @p0, @p1)", 5, "0");
 
             // string LIKE
-            TestExpr<User>(x => x.Name.StartsWith("Mauricio"), "Name LIKE (@p0 + '%')", "Mauricio");
-            TestExpr<User>(x => x.Name.Contains("Bezerra"), "Name LIKE ('%' + @p0 + '%')", "Bezerra");
-            TestExpr<User>(x => x.Name.EndsWith("David"), "Name LIKE ('%' + @p0)", "David");
+            TestExpr<User>(x => x.Name.StartsWith("Mauricio"), "Name LIKE (@p0 + '%')", "Mauricio");  // 20210216, Honda, CodeHelper: StartsWith vs LIKE ...% 
+            TestExpr<User>(x => x.Name.Contains("Bezerra"), "Name LIKE ('%' + @p0 + '%')", "Bezerra");  // 20210216, Honda, CodeHelper: Contain vs LIKE %...%  
+            TestExpr<User>(x => x.Name.EndsWith("David"), "Name LIKE ('%' + @p0)", "David");  // 20210216, Honda, CodeHelper: EndsWith vs LIKE %... 
             TestExpr<User>(x => x.Name.StartsWith(x.Address.Street), "Name LIKE (Address.Street + '%')");
 
             // Equals

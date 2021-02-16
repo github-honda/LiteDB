@@ -46,11 +46,11 @@ namespace LiteDB.Tests.QueryTest
         public void Query_Single_Where_With_And()
         {
             var r0 = local
-                .Where(x => x.Age == 25 && x.Active)
+                .Where(x => x.Age == 25 && x.Active) // // 20210216, Honda, CodeHelper query with multiple fields by Linq.
                 .ToArray();
 
             var r1 = collection.Query()
-                .Where("age = 25 AND active = true")
+                .Where("age = 25 AND active = true")  // 20210216, Honda, CodeHelper query with multiple fields by predicate.
                 .ToArray();
 
             AssertEx.ArrayEqual(r0, r1, true);
